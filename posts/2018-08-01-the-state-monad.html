@@ -23,6 +23,8 @@
                     <div class="col-md-4">
                         <ul class="navigation float-right">
                             <li><a href="../about.html">About</a></li>
+                            <li><a href="../contact.html">Contact</a></li>
+                            <li><a href="../archive.html">Archive</a></li>
                         </ul>
                     </div>
                 </div>
@@ -37,110 +39,54 @@
 
 	<h3 id="the-state-monad">The State (Monad)</h3>
 <p>Hello, reader! I haven’t posted in a while. If you followed my old blog at <a href="https://www.sent1nel.me">sent1nel.me</a>, you’ll see that this blog has a new design! Despite being loaded with examples, my former site, at labs.sent1nel.me, is now defunct. Perhaps I’ll resurrect it at some point in the future; having a portfolio availabile online did, for a time, compel me to publish more of the things I was working on in my spare time to learn new concepts, specifically algorithms and data structures.</p>
-<p>Alas!</p>
 <p>These days, I am writing Scala full-time, and have been writing Haskell in what precious spare time I manage to find to learn new programming concepts. I have been interested in functional programming since I stumbled upon Clojure, Hy, and Lisps more generally. I thought, at the time, that functional programming simply involved the use of languages with first-class functions (the ability to pass functions as arguments around an application as data), which make use of currying, combinatory logic and the lambda calculus, etc. Obviously I have since learned that the purpose of functional languages is to separate composition from computation, reduce bugs and aid the provability of a program, and to prevent certain classes of errors (no more <code>NullPointerException</code>s or <code>Cannot read property 'X' of undefined</code>!).</p>
 <p>The joy of Haskell is that it is a strict purely functional language: in order to ensure correctness, interactions with the real world (“side-effects”) are controlled through algebraic, purely functional representations of computation. Additionally, unlike Node.js, Haskell can take advantage of multiple cores, and unlike Ruby or Python, which are interpreted languages, Haskell code compiles down to native binaries which can improve performance. *</p>
-<p>For my first piece here, I want to talk about the State monad. Much like reducers in <a href="https://redux.js.org">Redux</a> or events in the event-sourcing pattern, the State monad represents changes to state, which can be composed and applied (folded over) to come to a final conclusion as to the state of a program. I assume here that you have an elementary grasp of Haskell’s syntax. If you don’t, <a href="http://learnyouahaskell.com/chapters">Learn You a Haskell for Great Good!</a>.</p>
-<p>The example I am going to walk you through is pulled directly from the <a href="https://wiki.haskell.org/State_Monad">Haskell Wiki page on the State Monad</a>.</p>
-<p>Let us begin.</p>
+<p>For my first piece here, I want to talk about the State Monad. Much like reducers in <a href="https://redux.js.org">Redux</a> or events in the event-sourcing pattern, the State monad represents changes to state, which can be composed and applied (folded over) to come to a final conclusion as to the state of a program.</p>
 <p>The State monad is built from the following definition:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">newtype</span> <span class="dt">State</span> s a <span class="fu">=</span></a>
 <a class="sourceLine" id="cb1-2" data-line-number="2">  <span class="dt">State</span> {<span class="ot"> runState ::</span> (s <span class="ot">-&gt;</span> (a,s)) }</a></code></pre></div>
-<p>What this means is that for things of type <code>State</code>, we also care about two other types, <code>s</code> and <code>a</code>. We also define a function <code>runState</code> which accepts <code>s</code>, representative of the type of the initial state, and returns a tuple, <code>(a,s)</code>, which represents the final value (<code>a</code>) and the final state (<code>s</code>). If we have a collection of these State transforms, and some state <code>s</code>, we should be able to apply these transformations one after the other to come to a final notion of state, and return a value of <code>a</code>.</p>
-<p>Ok. How, then, do we model the transformations?</p>
-<p>Let’s create a representation of the state of a game, where we keep track of whether the game is on or off, and a score. Let’s also define, up front, define a method for transforming our game’s state, perhaps by toggling the game’s “power button”:</p>
+<p>* Of course, Haskell-like languages which compile to JavaScript, such as Elm or PureScript, might not be as performant than writing native JavaScript, but the tradeoff for performance might be correctness, which cannot be sacrificed for many applications.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span></a>
 <a class="sourceLine" id="cb2-2" data-line-number="2"></a>
 <a class="sourceLine" id="cb2-3" data-line-number="3"><span class="kw">import</span> <span class="dt">Control.Monad.State</span></a>
 <a class="sourceLine" id="cb2-4" data-line-number="4"></a>
-<a class="sourceLine" id="cb2-5" data-line-number="5"><span class="kw">type</span> <span class="dt">GameValue</span> <span class="fu">=</span> <span class="dt">Int</span></a>
-<a class="sourceLine" id="cb2-6" data-line-number="6"><span class="kw">type</span> <span class="dt">GameState</span> <span class="fu">=</span> (<span class="dt">Bool</span>, <span class="dt">Int</span>)</a>
-<a class="sourceLine" id="cb2-7" data-line-number="7"></a>
-<a class="sourceLine" id="cb2-8" data-line-number="8"><span class="ot">toggle ::</span> <span class="dt">State</span> <span class="dt">GameState</span> <span class="dt">GameValue</span></a>
-<a class="sourceLine" id="cb2-9" data-line-number="9">toggle <span class="fu">=</span> <span class="kw">do</span></a>
-<a class="sourceLine" id="cb2-10" data-line-number="10">  (on, score) <span class="ot">&lt;-</span> get</a>
-<a class="sourceLine" id="cb2-11" data-line-number="11">  put (not on, score)</a>
-<a class="sourceLine" id="cb2-12" data-line-number="12">  return score</a>
-<a class="sourceLine" id="cb2-13" data-line-number="13"></a>
-<a class="sourceLine" id="cb2-14" data-line-number="14"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
-<a class="sourceLine" id="cb2-15" data-line-number="15">main <span class="fu">=</span> <span class="kw">do</span></a>
-<a class="sourceLine" id="cb2-16" data-line-number="16">  <span class="kw">let</span> game <span class="fu">=</span> (<span class="dt">True</span>, <span class="dv">0</span>)</a>
-<a class="sourceLine" id="cb2-17" data-line-number="17">  print <span class="fu">$</span> runState toggle game</a></code></pre></div>
-<p>Run this, and you should see that our initial state, <code>(True, 0)</code>, has been toggled three times, and we return our <code>a</code> value, <code>GameValue</code>, with it. The result will be <code>(0,(True, 0))</code>, which we know from the State monad’s definition represents <code>(a, s)</code>.</p>
-<h4 id="an-aside">An Aside</h4>
-<p>Given that we’ve defined GameState to represent the state we are interested in mutating with our composable state manipulating function, I bet you’re reading this and asking yourself, “couldn’t I just define function which accepts <code>GameState</code> and returns a copy of it, modified?”</p>
-<p>Of course you can:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="ot">toggleGame ::</span> <span class="dt">GameState</span> <span class="ot">-&gt;</span> <span class="dt">GameState</span></a>
-<a class="sourceLine" id="cb3-2" data-line-number="2">toggleGame (on, score) <span class="fu">=</span> (not on, score)</a></code></pre></div>
-<p>This is a very common way to think about how to model state transformations in lambda terms. Want to make them lazy? Simply return a partially-applied function which returns <code>GameState</code> when called. Of course, these functions can also be composed:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="ot">toggle3 ::</span> <span class="dt">GameState</span> <span class="ot">-&gt;</span> <span class="dt">GameState</span></a>
-<a class="sourceLine" id="cb4-2" data-line-number="2">toggle3 <span class="fu">=</span> (toggleGame <span class="fu">.</span> toggleGame <span class="fu">.</span> toggleGame) <span class="co">-- point-free!</span></a></code></pre></div>
-<p>The point isn’t so much that we <em>cannot</em> model state transformations in this way, simply that these representations are not monadic, or composable as such.</p>
-<p>Because things of type <code>State s a</code> are monadic, we can compose them using bind (<code>&gt;&gt;=</code>) or the <code>do</code> / <code>return</code> sugar. Here, we will toggle our game state’s Bool value three times, but return the score. <code>put</code> (defined as <code>put :: s -&gt; State s ()</code>), replaces the monad’s state with a new, possibly transformed value:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="ot">toggle3times ::</span> <span class="dt">State</span> <span class="dt">GameState</span> <span class="dt">GameValue</span></a>
-<a class="sourceLine" id="cb5-2" data-line-number="2">toggle3times  <span class="fu">=</span> toggle <span class="fu">&gt;&gt;=</span> \x <span class="ot">-&gt;</span></a>
-<a class="sourceLine" id="cb5-3" data-line-number="3">                toggle <span class="fu">&gt;&gt;=</span> \y <span class="ot">-&gt;</span></a>
-<a class="sourceLine" id="cb5-4" data-line-number="4">                toggle <span class="fu">&gt;&gt;=</span> \(on, score) <span class="ot">-&gt;</span></a>
-<a class="sourceLine" id="cb5-5" data-line-number="5">                put (on, score) <span class="fu">&gt;&gt;</span> return score</a>
-<a class="sourceLine" id="cb5-6" data-line-number="6"></a>
-<a class="sourceLine" id="cb5-7" data-line-number="7"><span class="ot">t3t ::</span> <span class="dt">State</span> <span class="dt">GameState</span> <span class="dt">GameValue</span></a>
-<a class="sourceLine" id="cb5-8" data-line-number="8">t3t  <span class="fu">=</span> <span class="kw">do</span> _           <span class="ot">&lt;-</span> toggle</a>
-<a class="sourceLine" id="cb5-9" data-line-number="9">          _           <span class="ot">&lt;-</span> toggle</a>
-<a class="sourceLine" id="cb5-10" data-line-number="10">          (on, score) <span class="ot">&lt;-</span> toggle</a>
-<a class="sourceLine" id="cb5-11" data-line-number="11">          put (on, score)</a>
-<a class="sourceLine" id="cb5-12" data-line-number="12">          return score</a></code></pre></div>
-<p>All of the choices!</p>
-<h4 id="bringing-it-all-together">Bringing It All Together</h4>
-<p>Let’s see all of this put into action:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">module</span> <span class="dt">StateGame</span> <span class="kw">where</span></a>
-<a class="sourceLine" id="cb6-2" data-line-number="2"> </a>
-<a class="sourceLine" id="cb6-3" data-line-number="3"><span class="kw">import</span> <span class="dt">Control.Monad.State</span></a>
-<a class="sourceLine" id="cb6-4" data-line-number="4"> </a>
-<a class="sourceLine" id="cb6-5" data-line-number="5"><span class="co">-- Example use of State monad</span></a>
-<a class="sourceLine" id="cb6-6" data-line-number="6"><span class="co">-- Passes a string of dictionary {a,b,c}</span></a>
-<a class="sourceLine" id="cb6-7" data-line-number="7"><span class="co">-- Game is to produce a number from the string.</span></a>
-<a class="sourceLine" id="cb6-8" data-line-number="8"><span class="co">-- By default the game is off, a C toggles the</span></a>
-<a class="sourceLine" id="cb6-9" data-line-number="9"><span class="co">-- game on and off. A 'a' gives +1 and a b gives -1.</span></a>
-<a class="sourceLine" id="cb6-10" data-line-number="10"><span class="co">-- E.g </span></a>
-<a class="sourceLine" id="cb6-11" data-line-number="11"><span class="co">-- 'ab'    = 0</span></a>
-<a class="sourceLine" id="cb6-12" data-line-number="12"><span class="co">-- 'ca'    = 1</span></a>
-<a class="sourceLine" id="cb6-13" data-line-number="13"><span class="co">-- 'cabca' = 0</span></a>
-<a class="sourceLine" id="cb6-14" data-line-number="14"><span class="co">-- State = game is on or off &amp; current score</span></a>
-<a class="sourceLine" id="cb6-15" data-line-number="15"><span class="co">--       = (Bool, Int)</span></a>
-<a class="sourceLine" id="cb6-16" data-line-number="16"> </a>
-<a class="sourceLine" id="cb6-17" data-line-number="17"><span class="kw">type</span> <span class="dt">GameValue</span> <span class="fu">=</span> <span class="dt">Int</span></a>
-<a class="sourceLine" id="cb6-18" data-line-number="18"><span class="kw">type</span> <span class="dt">GameState</span> <span class="fu">=</span> (<span class="dt">Bool</span>, <span class="dt">Int</span>)</a>
-<a class="sourceLine" id="cb6-19" data-line-number="19"></a>
-<a class="sourceLine" id="cb6-20" data-line-number="20"><span class="ot">playGame ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">State</span> <span class="dt">GameState</span> <span class="dt">GameValue</span></a>
-<a class="sourceLine" id="cb6-21" data-line-number="21">playGame []     <span class="fu">=</span> <span class="kw">do</span></a>
-<a class="sourceLine" id="cb6-22" data-line-number="22">    (_, score) <span class="ot">&lt;-</span> get</a>
-<a class="sourceLine" id="cb6-23" data-line-number="23">    return score</a>
-<a class="sourceLine" id="cb6-24" data-line-number="24"></a>
-<a class="sourceLine" id="cb6-25" data-line-number="25">playGame (x<span class="fu">:</span>xs) <span class="fu">=</span> <span class="kw">do</span></a>
-<a class="sourceLine" id="cb6-26" data-line-number="26">    (on, score) <span class="ot">&lt;-</span> get</a>
-<a class="sourceLine" id="cb6-27" data-line-number="27">    <span class="kw">case</span> x <span class="kw">of</span></a>
-<a class="sourceLine" id="cb6-28" data-line-number="28">         <span class="ch">'a'</span> <span class="fu">|</span> on <span class="ot">-&gt;</span> put (on, score <span class="fu">+</span> <span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb6-29" data-line-number="29">         <span class="ch">'b'</span> <span class="fu">|</span> on <span class="ot">-&gt;</span> put (on, score <span class="fu">-</span> <span class="dv">1</span>)</a>
-<a class="sourceLine" id="cb6-30" data-line-number="30">         <span class="ch">'c'</span>      <span class="ot">-&gt;</span> put (not on, score)</a>
-<a class="sourceLine" id="cb6-31" data-line-number="31">         _        <span class="ot">-&gt;</span> put (on, score)</a>
-<a class="sourceLine" id="cb6-32" data-line-number="32">    playGame xs</a>
-<a class="sourceLine" id="cb6-33" data-line-number="33"></a>
-<a class="sourceLine" id="cb6-34" data-line-number="34">startState <span class="fu">=</span> (<span class="dt">False</span>, <span class="dv">0</span>)</a>
-<a class="sourceLine" id="cb6-35" data-line-number="35"></a>
-<a class="sourceLine" id="cb6-36" data-line-number="36">main <span class="fu">=</span> print <span class="fu">$</span> evalState (playGame <span class="st">&quot;abcaaacbbcabbab&quot;</span>) startState</a></code></pre></div>
-<p>Here we an see that playGame is called for as long as there are chars yet to be processed, and finally retrns the score, which is our <code>GameValue</code>. Notice how the author of this snippet uses <code>put</code> to update the current state on each iteration, before finally plucking the value they are interested in, and kicking the entire chain of computation off with a single call to <code>evalState</code>.</p>
-<h4 id="ad-summam">Ad Summam</h4>
-<p>We’ve seen how the State monad represents composable changes to state, and offers us the “feature” of being able to return an abitrary value, possibly not even related to the state, which, in theory, can be used by the callee to make some decision about where to go next. We’ve seen that use of the State monad is not necessary for representing changes to state, but it is composable as a monad and that’s kind of nice.</p>
-<p>When I first started digging into the State monad, I was kind of terrified by its signature. The truth is that it’s kind of a pushover.</p>
-<p>What’s next? <code>Free</code>, <code>Cofree</code>, <code>Free Applicative Functors</code>, <code>OptionT</code>, and <code>Profunctor Optics</code> probably.</p>
-<div class="row pad-bottom">
-<div class="col-md-6 offset-3">
-<img src="../images/profunctor-optics.jpg" />
-</div>
-</div>
-<p>* Of course, Haskell-like languages which compile to JavaScript, such as Elm or PureScript, might not be as performant as native JavaScript, but the tradeoff for performance might be correctness, which cannot be sacrificed for many applications.</p>
-
-  Want to keep reading? <a href="../archive.html">Check out out more posts</a>.
+<a class="sourceLine" id="cb2-5" data-line-number="5"><span class="kw">type</span> <span class="dt">GameState</span> <span class="fu">=</span> (<span class="dt">Bool</span>, <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb2-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb2-7" data-line-number="7"><span class="co">-- convenience type</span></a>
+<a class="sourceLine" id="cb2-8" data-line-number="8"><span class="co">-- a limitations is that when there are multiple value types, these &quot;convenience&quot;</span></a>
+<a class="sourceLine" id="cb2-9" data-line-number="9"><span class="co">-- types can become numerous and less convenient</span></a>
+<a class="sourceLine" id="cb2-10" data-line-number="10"><span class="kw">type</span> <span class="dt">Transform</span> <span class="fu">=</span> <span class="dt">State</span> <span class="dt">GameState</span> <span class="dt">GameState</span></a>
+<a class="sourceLine" id="cb2-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb2-12" data-line-number="12"><span class="ot">addSeventeen ::</span> <span class="dt">Transform</span></a>
+<a class="sourceLine" id="cb2-13" data-line-number="13">addSeventeen <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb2-14" data-line-number="14">  (on, n) <span class="ot">&lt;-</span> get</a>
+<a class="sourceLine" id="cb2-15" data-line-number="15">  return (on, n <span class="fu">+</span> <span class="dv">17</span>)</a>
+<a class="sourceLine" id="cb2-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb2-17" data-line-number="17"><span class="ot">addOne ::</span> <span class="dt">Transform</span></a>
+<a class="sourceLine" id="cb2-18" data-line-number="18">addOne <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb2-19" data-line-number="19">  (on, n) <span class="ot">&lt;-</span> get</a>
+<a class="sourceLine" id="cb2-20" data-line-number="20">  return (on, n <span class="fu">+</span> <span class="dv">1</span>)</a>
+<a class="sourceLine" id="cb2-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb2-22" data-line-number="22"><span class="ot">inputToTransform ::</span> <span class="dt">Bool</span> <span class="ot">-&gt;</span> <span class="dt">Transform</span></a>
+<a class="sourceLine" id="cb2-23" data-line-number="23">inputToTransform x <span class="fu">=</span></a>
+<a class="sourceLine" id="cb2-24" data-line-number="24">  <span class="kw">case</span> x <span class="kw">of</span></a>
+<a class="sourceLine" id="cb2-25" data-line-number="25">    <span class="dt">True</span>  <span class="ot">-&gt;</span> addSeventeen</a>
+<a class="sourceLine" id="cb2-26" data-line-number="26">    <span class="dt">False</span> <span class="ot">-&gt;</span> addOne</a>
+<a class="sourceLine" id="cb2-27" data-line-number="27"></a>
+<a class="sourceLine" id="cb2-28" data-line-number="28"><span class="ot">applyTransforms ::</span> [<span class="dt">Transform</span>] <span class="ot">-&gt;</span> <span class="dt">Transform</span></a>
+<a class="sourceLine" id="cb2-29" data-line-number="29">applyTransforms inputs <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb2-30" data-line-number="30">  initialState <span class="ot">&lt;-</span> get</a>
+<a class="sourceLine" id="cb2-31" data-line-number="31">  return <span class="fu">$</span> foldl (\state input <span class="ot">-&gt;</span> evalState input state) initialState inputs</a>
+<a class="sourceLine" id="cb2-32" data-line-number="32"></a>
+<a class="sourceLine" id="cb2-33" data-line-number="33"><span class="co">-- point-free!</span></a>
+<a class="sourceLine" id="cb2-34" data-line-number="34"><span class="ot">transform ::</span> [<span class="dt">Bool</span>] <span class="ot">-&gt;</span> <span class="dt">Transform</span></a>
+<a class="sourceLine" id="cb2-35" data-line-number="35">transform <span class="fu">=</span> (applyTransforms <span class="fu">.</span> map inputToTransform)</a>
+<a class="sourceLine" id="cb2-36" data-line-number="36"></a>
+<a class="sourceLine" id="cb2-37" data-line-number="37"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb2-38" data-line-number="38">main <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb2-39" data-line-number="39">  <span class="kw">let</span> game <span class="fu">=</span> (<span class="dt">True</span>, <span class="dv">0</span>)</a>
+<a class="sourceLine" id="cb2-40" data-line-number="40">  <span class="kw">let</span> inputs <span class="fu">=</span> [<span class="dt">True</span>, <span class="dt">False</span>, <span class="dt">False</span>, <span class="dt">False</span>]</a>
+<a class="sourceLine" id="cb2-41" data-line-number="41">  print <span class="fu">$</span> runState (transform inputs) game</a></code></pre></div>
 </div>
 
         <div class="container">
